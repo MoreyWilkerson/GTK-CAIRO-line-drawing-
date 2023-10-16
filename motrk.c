@@ -1,6 +1,5 @@
-//STATUS: successfully made a line with the linked list method. 
-
-#define _GNU_SOURCE
+//GOAL: allow for multiple linked lists. 
+//STATUS: multiple lines. yeah baby 
 
 #include <string.h>
 #include <gtk/gtk.h>
@@ -24,7 +23,7 @@ struct Point {
 	int x;
 	int y;
 	struct Point *next;
-} *p1, *p2, *start;
+} *p1, *start; 
 
 //end point - moves with mousclick
 struct {
@@ -32,13 +31,19 @@ struct {
   int coordy;
 } gend;
 
+struct lines {
+  struct Point *head; // starting pointer 
+  struct lines *next; // next in line
+} *heads, *lnstart; 
+
 void		  on_destroy(); 
 bool activated = FALSE; //shows wether or not to make the line
 char buffer[50];
 
 int main(int argc, char *argv[]) { 
 
-  p1 = p2 = start = NULL;
+  p1  = start = NULL;
+  heads = lnstart = NULL;
 
   gtk_init(&argc, &argv); //init Gtk
 
@@ -72,28 +77,41 @@ int main(int argc, char *argv[]) {
 void	on_destroy() {gtk_main_quit();}
 
 gboolean on_draw1_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data ) { 
-	
-  cairo_set_line_width(cr, 1.0);
-  if (start == NULL) return FALSE;
 
-	int old_x = start->x;  
-	int old_y = start->y;
-
-	p1 = start->next;
-
-	while ( p1 != NULL ) {
-
-		cairo_move_to (cr, (double) old_x, (double) old_y);
-		cairo_line_to (cr, (double) p1->x, (double) p1->y);
-		cairo_stroke (cr);
-
-		old_x = p1->x; // old_x is now the x value from the p1 struct.  
-		old_y =  p1->y;
-		p1 = p1 ->next; //p1 now points to the next value of the linked list 
-	}
+  // cairo_set_line_width(cr, 1.0);
+  
+ 
+ if (start == NULL || lnstart == NULL) return FALSE; // dont reset if this shi is bad 
 
 
-  if(activated == TRUE){
+  while (heads != NULL) {
+    start = heads ->head; // ensure start is the latest line. 
+    int old_x = start->x;  
+    int old_y = start->y; //store the location of the start values 
+    p1 = start -> next;//p1 pointed to second in line.
+      while ( p1 != NULL ) {
+         cairo_move_to (cr, (double) old_x, (double) old_y);
+         cairo_line_to (cr, (double) p1->x, (double) p1->y);
+         cairo_stroke (cr);
+
+         old_x = p1->x; // old_x is now the x value from the p1 struct.  
+         old_y = p1->y;
+         p1 = p1 ->next; //p1 now points to the next value of the linked list 
+      }    
+      //note: i REALLY wanted this if statement to just be (heads = heads->next )
+      if (heads ->next != NULL) { 
+        heads = heads ->next; //move to the next line    
+      } 
+      else {
+        break;
+      }
+  }  
+
+ 
+  heads = lnstart; //reset head to point to lnstart. it should be already.
+  start = heads ->head; //reset time 
+
+  if(activated == TRUE && start != NULL){
     cairo_move_to (cr, (double) start->x, (double) start->y);
     cairo_line_to(cr,gend.coordx,gend.coordy);
     cairo_stroke(cr);
@@ -104,7 +122,10 @@ gboolean on_draw1_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data ) {
 
 gboolean on_draw1_button_press_event(GtkWidget *widget, GdkEventButton *bevent) {
     if (bevent->button == 1) {
+      
       if(activated == TRUE){//note to self: make AND operand with these 2 for loops 
+        sprintf(buffer,"button clicked");
+        gtk_label_set_text (GTK_LABEL(label3),buffer);
 	      draw_brush (widget, bevent->x, bevent->y);
       }
     }
@@ -113,8 +134,6 @@ gboolean on_draw1_button_press_event(GtkWidget *widget, GdkEventButton *bevent) 
       sprintf(buffer,"line inactive.");
       gtk_label_set_text (GTK_LABEL(label3),buffer);
     }
-
-
 
   return FALSE;
 }
@@ -134,26 +153,33 @@ gboolean on_draw1_event(GtkWidget *widget, GdkEventButton *event) {
   return FALSE;
 }
 
-//i dont know what this does. 
-// gboolean on_draw1_motion_notify_event (GtkWidget *widget, GdkEventMotion *event, gpointer data) {
-// 	if (event->state & GDK_BUTTON1_MASK ) draw_brush (widget, event->x, event->y);
-// 	return TRUE;
-// }
-
-
 //this makes a new linked list, cool.
 static void draw_brush (GtkWidget *widget, gdouble x, gdouble y) {
-	p1 = malloc (sizeof(struct Point)); //p1 now is a valid pointer. 
-	if (p1 == NULL) { printf("out of memory\n"); abort(); }
+	
+  p1 = malloc(sizeof(struct Point)); //p1 now is a valid pointer.
+	if (p1 == NULL) { printf("error making Point: - out of memory\n"); abort(); }
+
 	p1->x = x; //p1's x value is the location of the mouse click.
-	p1->y = y; //p2's y value is now the location of the mouse click.
-	p1->next = start; //p1 now has an effective link to where start is stored. note that on the first click start is NULL.
-	start = p1; //start now points to p1. this creates a linked list.
-	gtk_widget_queue_draw (draw1);
+	p1->y = y; //p1's y value is now the location of the mouse click.
+	p1->next = start; //p1 now has an effective link to where start is stored. note that on the first click start is NULL, and after it the previously made P1 of the linked list.  
+	start = p1; //start now points to the latest creation of p1. this is the START of the linked list, and the last point clicked by the user. .
+  lnstart -> head = start; //the "head" feature of heads now points to the head (i.e,"Start") of p1. 
+  //for some reason this does NOT work. 
+ 
+  gtk_widget_queue_draw (draw1);
 }
 
 void on_button1_clicked(GtkButton* b){  
   activated = TRUE;
+  start = NULL; // reset.
+
+  heads = malloc(sizeof(struct lines)); //Heads is now a valid pointer.
+  if (heads == NULL) { printf("error making heads: out of memory\n"); abort(); }
+
+  heads -> next = lnstart; //heads now has an effective link to where start is stored. note that on the first click start is NULL, and after it is the second to latest creation of heads. 
+  lnstart = heads; //lnstart now points to the latest creation of a line.
+
   sprintf(buffer,"line active.");
   gtk_label_set_text (GTK_LABEL(label3),buffer);
+
 }
