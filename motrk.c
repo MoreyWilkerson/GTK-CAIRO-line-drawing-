@@ -1,5 +1,6 @@
 //GOAL: allow for multiple linked lists. 
-//STATUS: multiple lines. yeah baby 
+//STATUS: Holy fucking shit 
+// program works quite well 
 
 #include <string.h>
 #include <gtk/gtk.h>
@@ -38,7 +39,9 @@ struct lines {
 
 void		  on_destroy(); 
 bool activated = FALSE; //shows wether or not to make the line
+
 char buffer[50];
+int x,y;
 
 int main(int argc, char *argv[]) { 
 
@@ -78,11 +81,28 @@ void	on_destroy() {gtk_main_quit();}
 
 gboolean on_draw1_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data ) { 
 
-  // cairo_set_line_width(cr, 1.0);
-  
- 
- if (start == NULL || lnstart == NULL) return FALSE; // dont reset if this shi is bad 
+  cairo_set_line_width(cr, 1.0);
 
+  //if (start == NULL || heads == NULL) return FALSE; //Oregano. This needs to be expanded.
+
+  // Lot of caviots on when and when not to draw. this attempts to capture. 
+  while (start == NULL){
+    if (heads == NULL) {
+    return FALSE;       
+    }//case -program opened, line button not pressed. 
+    else if (heads -> next == NULL){
+    return FALSE;
+    }//case - line button clicked, but nothing to draw.
+    heads = heads -> next; //we now need to check the next line .
+    start = heads -> head; //check to see if the head of the next line needs to be drawn.
+  }
+
+  //juuuuust to make sure this isnt breaking everything. 
+  if(activated == TRUE && lnstart -> head != NULL){
+    cairo_move_to (cr, (double) start->x, (double) start->y);
+    cairo_line_to(cr,gend.coordx,gend.coordy);
+    cairo_stroke(cr);
+  }
 
   while (heads != NULL) {
     start = heads ->head; // ensure start is the latest line. 
@@ -92,33 +112,23 @@ gboolean on_draw1_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data ) {
       while ( p1 != NULL ) {
          cairo_move_to (cr, (double) old_x, (double) old_y);
          cairo_line_to (cr, (double) p1->x, (double) p1->y);
+
          cairo_stroke (cr);
 
          old_x = p1->x; // old_x is now the x value from the p1 struct.  
          old_y = p1->y;
          p1 = p1 ->next; //p1 now points to the next value of the linked list 
       }    
-      //note: i REALLY wanted this if statement to just be (heads = heads->next )
-      if (heads ->next != NULL) { 
-        heads = heads ->next; //move to the next line    
-      } 
-      else {
-        break;
-      }
+      heads = heads->next; // move to the next point in the line.
   }  
 
- 
   heads = lnstart; //reset head to point to lnstart. it should be already.
-  start = heads ->head; //reset time 
+  start = heads ->head; //reset start to point to heads -> head. 
 
-  if(activated == TRUE && start != NULL){
-    cairo_move_to (cr, (double) start->x, (double) start->y);
-    cairo_line_to(cr,gend.coordx,gend.coordy);
-    cairo_stroke(cr);
-  }
 
-	return FALSE;
-}
+
+ 	return FALSE;
+ }
 
 gboolean on_draw1_button_press_event(GtkWidget *widget, GdkEventButton *bevent) {
     if (bevent->button == 1) {
@@ -177,7 +187,10 @@ void on_button1_clicked(GtkButton* b){
   if (heads == NULL) { printf("error making heads: out of memory\n"); abort(); }
 
   heads -> next = lnstart; //heads now has an effective link to where start is stored. note that on the first click start is NULL, and after it is the second to latest creation of heads. 
+  heads -> head = NULL; //ensure the new heads is not pointing to garbage.
+  
   lnstart = heads; //lnstart now points to the latest creation of a line.
+  
 
   sprintf(buffer,"line active.");
   gtk_label_set_text (GTK_LABEL(label3),buffer);
