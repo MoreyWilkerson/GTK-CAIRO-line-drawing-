@@ -1,5 +1,4 @@
 //GOAL: allow for multiple linked lists. 
-//STATUS: Holy fucking shit 
 // program works quite well 
 
 #include <string.h>
@@ -11,6 +10,7 @@ GtkWidget       *window;
 GtkWidget       *fixed1;
 GtkWidget       *draw1;
 GtkWidget       *button1;
+GtkWidget       *clear;
 GtkWidget       *label1;
 GtkWidget       *label2;
 GtkWidget       *label3;
@@ -24,7 +24,7 @@ struct Point {
 	int x;
 	int y;
 	struct Point *next;
-} *p1, *start; 
+} *p1, *p2, *start; 
 
 //end point - moves with mousclick
 struct {
@@ -35,7 +35,7 @@ struct {
 struct lines {
   struct Point *head; // starting pointer 
   struct lines *next; // next in line
-} *heads, *lnstart; 
+} *heads, *heads2, *lnstart; 
 
 void		  on_destroy(); 
 bool activated = FALSE; //shows wether or not to make the line
@@ -60,6 +60,7 @@ int main(int argc, char *argv[]) {
   fixed1		  = GTK_WIDGET(gtk_builder_get_object(builder, "fixed1"));
   draw1		    = GTK_WIDGET(gtk_builder_get_object(builder, "draw1"));
   button1     = GTK_WIDGET(gtk_builder_get_object(builder, "button1"));
+  clear       = GTK_WIDGET(gtk_builder_get_object(builder, "clear"));
 	label1      = GTK_WIDGET(gtk_builder_get_object(builder, "label1"));
   label2      = GTK_WIDGET(gtk_builder_get_object(builder, "label2"));
   label3      = GTK_WIDGET(gtk_builder_get_object(builder, "label3"));  
@@ -194,5 +195,19 @@ void on_button1_clicked(GtkButton* b){
 
   sprintf(buffer,"line active.");
   gtk_label_set_text (GTK_LABEL(label3),buffer);
+
+}
+
+void	on_clear_clicked(GtkWidget *b1) { // clears (1) line, only use when activated = true 
+  
+  p1 = start;
+  while (p1) { p2 = p1 -> next; free(p1); p1 = p2; } //clear the line drawn, beginning to end 
+  start = NULL;
+ 
+  heads = lnstart;  //delete the most recent line head 
+  heads2 = heads -> next; free(heads); heads = heads2;
+  lnstart = NULL;
+    
+  gtk_widget_queue_draw (draw1);
 
 }

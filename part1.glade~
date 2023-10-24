@@ -55,7 +55,7 @@
           </object>
           <packing>
             <property name="x">156</property>
-            <property name="y">419</property>
+            <property name="y">415</property>
           </packing>
         </child>
         <child>
@@ -69,6 +69,21 @@
           <packing>
             <property name="x">270</property>
             <property name="y">414</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="clear">
+            <property name="label" translatable="yes">Clear</property>
+            <property name="width-request">100</property>
+            <property name="height-request">34</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">True</property>
+            <signal name="clicked" handler="on_Clear_clicked" swapped="no"/>
+          </object>
+          <packing>
+            <property name="x">156</property>
+            <property name="y">455</property>
           </packing>
         </child>
       </object>
