@@ -2,7 +2,7 @@
 
 GTK 3.0 canvas that draws multiple lines through the use of nested linked lists. Click with the left button on the mouse to draw lines, click with the right to stop.  
 
-https://github.com/MoreyWilkerson/Mohrs/assets/95983976/f2b6153c-77fd-4a3a-a5fa-ad7d3cf59818
+https://github.com/MoreyWilkerson/GTK-CAIRO-line-drawing-/assets/95983976/3c957fa0-ce74-40fd-97f1-721d9217d6b5
 
 ##LS/linux compiling
 
@@ -29,12 +29,10 @@ https://www.cs.uni.edu/~okane/youtube.html
 
 ##Known bugs 
 
-if clear is clicked while line is active a seg fault occurs 
+None. if any are seen please shoot me a message. 
 
 ## Future plans
 - Change Clear button such that it can delete a point it is near 
-
-- add a feature that when control is pressed, line is locked to only degrees of 30,45,60,90, and so on and cannot deviate from this. 
 
 ##tags 
 GTK, Glade, Canvas, Cairo, Drawing, Mspaint

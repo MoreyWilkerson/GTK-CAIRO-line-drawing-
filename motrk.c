@@ -22,6 +22,7 @@ static void draw_brush (GtkWidget *widget, gdouble    x, gdouble    y);
 
 void snapchange(GtkWidget *widget, cairo_t *cr); // allows mouse to "Snap" to points 
 void clearline();
+void straightline(); 
 
 
 //points along the "chain"
@@ -38,9 +39,8 @@ struct {
   int snapcoordx;// snaps store the location of the snap. 
   int snapcoordy; 
   bool snap; // will change the location if it detects a snap 
+  bool cnrl; // true on control button press 
 } gend; //note: this is not a pointer, while every other struct declaration is. thanks, I hate it. 
-
-
 
 struct lines {
   struct Point *head; // starting pointer 
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
 
   p1  = start = NULL;
   heads = lnstart = NULL;
-  gend.snap = FALSE; 
+  gend.snap = gend.cnrl = FALSE; 
 
   gtk_init(&argc, &argv); //init Gtk
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
   g_object_unref(builder);
 
   gtk_widget_set_events(draw1, GDK_POINTER_MOTION_MASK | GDK_BUTTON_MOTION_MASK 
-                          | GDK_BUTTON_PRESS_MASK);                      
+                          | GDK_BUTTON_PRESS_MASK | GDK_KEY_PRESS | GDK_KEY_RELEASE);                      
 
   gtk_window_set_keep_above(GTK_WINDOW(window), TRUE);
   gtk_widget_show(window);
@@ -165,6 +165,7 @@ gboolean on_draw1_event(GtkWidget *widget, GdkEventButton *event) {
   if(lineatv == TRUE) {// Dont change if line is snapping
     gend.coordx = event->x;
     gend.coordy = event->y;
+    if (gend.cnrl == TRUE) {straightline();}
   }
 
   sprintf(buffer,"X location: %.4f",event->x);
@@ -206,12 +207,10 @@ void on_button1_clicked(GtkButton* b){  //line button.
 
 }
 
-void	on_clear_clicked(GtkWidget *b1) { // clears (1) line, only use when lineatv = true 
-  
+void	on_clear_clicked(GtkWidget *b1) { // clears (1) line
+  if (lineatv == TRUE) return;
   clearline();
-    
   gtk_widget_queue_draw (draw1);
-
 }
 
 void clearline(){
@@ -224,6 +223,36 @@ void clearline(){
     lnstart = heads;
     if (heads!=NULL) {start = heads->head;}
   }
+}
+
+void straightline(){ // on a cntrl+left mouse click, only do straight lines
+  if (start == NULL) return;
+  double xcheck, ycheck;
+  double angle;
+
+  xcheck = (double) gend.coordx - (double) start->x;
+  ycheck = (double) gend.coordy - (double) start->y;
+  
+  if (xcheck != 0.0){  angle = atan(ycheck/xcheck)*180/3.1415;}
+  else{ angle = 90;} // change, probably
+
+  sprintf(buffer,"angle: %.2f ", angle);
+  gtk_label_set_text (GTK_LABEL(label3),buffer);
+
+  // xcheck = abs(xcheck);
+  // ycheck = abs(ycheck);
+
+   if (fabs(angle) < 22.5){ // horizontal
+      gend.coordy = start->y;
+    }
+   else if(fabs(angle) > 67.5){ // vertical
+     gend.coordx = start->x;
+   }
+   else { // all 45 degree angles
+    double pyth = sqrt(pow(xcheck,2) + pow(ycheck,2));
+    gend.coordx = ((int) (cos(M_PI/4) * pyth)) * abs(xcheck)/xcheck + start ->x; // abs(xcheck)/xcheck locks the sign
+    gend.coordy = ((int) (sin(M_PI/4) * pyth)) * abs(ycheck)/ycheck + start ->y;
+   }
 }
 
 void snapchange(GtkWidget *widget, cairo_t *cr){
@@ -252,13 +281,12 @@ void snapchange(GtkWidget *widget, cairo_t *cr){
             return; //note : this return makes it such that the square points to the most recent point made.  
           }
           p1 = p1 ->next; //p1 now points to the next value of the linked list 
-        }    
+        }
       heads = heads->next; // move to the next point in the line.
-    }   // isn't this O(n^2)? thats rough buddy 
+    } // isn't this O(n^2)? thats rough buddy 
 
     heads = heads2; //reset head to same value as beginning.
     p1 = p2; //reset p1 to same value as the beginning. 
-    
   }
   gend.snap = FALSE;
 }
@@ -268,3 +296,21 @@ void	on_snaptgl_toggled(GtkToggleButton *b) {
 	if (T) snapatv = TRUE;
 	else   snapatv = FALSE;
 	}
+
+void on_window_key_press_event(GtkWidget *widget, GdkEventKey *cevent){
+  sprintf(buffer,"Key pressed: %i ", cevent->keyval);
+  gtk_label_set_text (GTK_LABEL(label3),buffer);
+
+  if (cevent->keyval== 65507 || cevent -> keyval == 65508){
+      gend.cnrl = TRUE;
+  }
+}
+
+void on_window_key_release_event(GtkWidget *widget, GdkEventKey *devent){
+  sprintf(buffer,"Key released: %i ", devent->keyval);
+  gtk_label_set_text (GTK_LABEL(label3),buffer);
+
+  if (devent->keyval== 65507 || devent -> keyval == 65508){
+      gend.cnrl = FALSE;
+  }
+}
