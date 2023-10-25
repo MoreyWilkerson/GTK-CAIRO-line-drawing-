@@ -51,6 +51,8 @@
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="receives-default">True</property>
+            <property name="tooltip-text" translatable="yes">Left mouse click - sets point 
+Right mouse click - ends line drawing.</property>
             <signal name="clicked" handler="on_button1_clicked" swapped="no"/>
           </object>
           <packing>
@@ -84,6 +86,24 @@
           <packing>
             <property name="x">156</property>
             <property name="y">455</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkCheckButton" id="snaptgl">
+            <property name="label" translatable="yes">Snap</property>
+            <property name="name">check1</property>
+            <property name="width-request">100</property>
+            <property name="height-request">22</property>
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="receives-default">False</property>
+            <property name="tooltip-text" translatable="yes">Checked  - SNAPS to a nearby line. </property>
+            <property name="draw-indicator">True</property>
+            <signal name="toggled" handler="on_snaptgl_toggled" swapped="no"/>
+          </object>
+          <packing>
+            <property name="x">270</property>
+            <property name="y">438</property>
           </packing>
         </child>
       </object>

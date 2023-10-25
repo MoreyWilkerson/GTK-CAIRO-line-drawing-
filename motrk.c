@@ -14,10 +14,15 @@ GtkWidget       *clear;
 GtkWidget       *label1;
 GtkWidget       *label2;
 GtkWidget       *label3;
+GtkWidget       *snaptgl;
 
 GtkBuilder		  *builder; 
 
 static void draw_brush (GtkWidget *widget, gdouble    x, gdouble    y);
+
+void snapchange(GtkWidget *widget, cairo_t *cr); // allows mouse to "Snap" to points 
+void clearline();
+
 
 //points along the "chain"
 struct Point {
@@ -30,7 +35,12 @@ struct Point {
 struct {
   int coordx;
   int coordy;
-} gend;
+  int snapcoordx;// snaps store the location of the snap. 
+  int snapcoordy; 
+  bool snap; // will change the location if it detects a snap 
+} gend; //note: this is not a pointer, while every other struct declaration is. thanks, I hate it. 
+
+
 
 struct lines {
   struct Point *head; // starting pointer 
@@ -38,7 +48,9 @@ struct lines {
 } *heads, *heads2, *lnstart; 
 
 void		  on_destroy(); 
-bool activated = FALSE; //shows wether or not to make the line
+bool lineatv = FALSE; //shows whether or not to make the line
+bool snapatv = FALSE;
+
 
 char buffer[50];
 int x,y;
@@ -47,6 +59,7 @@ int main(int argc, char *argv[]) {
 
   p1  = start = NULL;
   heads = lnstart = NULL;
+  gend.snap = FALSE; 
 
   gtk_init(&argc, &argv); //init Gtk
 
@@ -64,6 +77,7 @@ int main(int argc, char *argv[]) {
 	label1      = GTK_WIDGET(gtk_builder_get_object(builder, "label1"));
   label2      = GTK_WIDGET(gtk_builder_get_object(builder, "label2"));
   label3      = GTK_WIDGET(gtk_builder_get_object(builder, "label3"));  
+  snaptgl     = GTK_WIDGET(gtk_builder_get_object(builder, "snaptgl"));  
 
   g_object_unref(builder);
 
@@ -84,9 +98,6 @@ gboolean on_draw1_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data ) {
 
   cairo_set_line_width(cr, 1.0);
 
-  //if (start == NULL || heads == NULL) return FALSE; //Oregano. This needs to be expanded.
-
-  // Lot of caviots on when and when not to draw. this attempts to capture. 
   while (start == NULL){
     if (heads == NULL) {
     return FALSE;       
@@ -98,8 +109,11 @@ gboolean on_draw1_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data ) {
     start = heads -> head; //check to see if the head of the next line needs to be drawn.
   }
 
-  //juuuuust to make sure this isnt breaking everything. 
-  if(activated == TRUE && lnstart -> head != NULL){
+
+  if(lineatv == TRUE && lnstart -> head != NULL){ // the line drawn to the mouse. 
+    
+    snapchange(widget,cr);
+  
     cairo_move_to (cr, (double) start->x, (double) start->y);
     cairo_line_to(cr,gend.coordx,gend.coordy);
     cairo_stroke(cr);
@@ -125,33 +139,30 @@ gboolean on_draw1_draw(GtkWidget *widget, cairo_t *cr, gpointer user_data ) {
 
   heads = lnstart; //reset head to point to lnstart. it should be already.
   start = heads ->head; //reset start to point to heads -> head. 
-
-
-
  	return FALSE;
  }
 
 gboolean on_draw1_button_press_event(GtkWidget *widget, GdkEventButton *bevent) {
-    if (bevent->button == 1) {
-      
-      if(activated == TRUE){//note to self: make AND operand with these 2 for loops 
+    if (bevent->button == 1 && lineatv == TRUE) {
         sprintf(buffer,"button clicked");
         gtk_label_set_text (GTK_LABEL(label3),buffer);
-	      draw_brush (widget, bevent->x, bevent->y);
-      }
-    }
+        if (gend.snap == TRUE) {draw_brush (widget, gend.snapcoordx , gend.snapcoordy);}
+	      else { draw_brush(widget, gend.coordx , gend.coordy);}
+    } // left mouse click
+
     else if (bevent->button == 3) {
-      activated = FALSE;
+      lineatv = FALSE;
+      if (start == NULL){clearline();} // if no line made, delete associated head of line 
       sprintf(buffer,"line inactive.");
       gtk_label_set_text (GTK_LABEL(label3),buffer);
-    }
+    } // right mouse click 
 
   return FALSE;
 }
 
 gboolean on_draw1_event(GtkWidget *widget, GdkEventButton *event) {
 
-  if(activated == TRUE){
+  if(lineatv == TRUE) {// Dont change if line is snapping
     gend.coordx = event->x;
     gend.coordy = event->y;
   }
@@ -175,39 +186,85 @@ static void draw_brush (GtkWidget *widget, gdouble x, gdouble y) {
 	p1->next = start; //p1 now has an effective link to where start is stored. note that on the first click start is NULL, and after it the previously made P1 of the linked list.  
 	start = p1; //start now points to the latest creation of p1. this is the START of the linked list, and the last point clicked by the user. .
   lnstart -> head = start; //the "head" feature of heads now points to the head (i.e,"Start") of p1. 
-  //for some reason this does NOT work. 
  
   gtk_widget_queue_draw (draw1);
 }
 
-void on_button1_clicked(GtkButton* b){  
-  activated = TRUE;
-  start = NULL; // reset.
+void on_button1_clicked(GtkButton* b){  //line button.
+  lineatv = TRUE;
+  start = NULL; // reset start; a new line is being made.
 
   heads = malloc(sizeof(struct lines)); //Heads is now a valid pointer.
   if (heads == NULL) { printf("error making heads: out of memory\n"); abort(); }
 
   heads -> next = lnstart; //heads now has an effective link to where start is stored. note that on the first click start is NULL, and after it is the second to latest creation of heads. 
-  heads -> head = NULL; //ensure the new heads is not pointing to garbage.
-  
-  lnstart = heads; //lnstart now points to the latest creation of a line.
-  
+  heads -> head = NULL; //ensure the new heads is not pointing to garbage values.
 
+  lnstart = heads; //lnstart now points to the latest creation of a line struct.
   sprintf(buffer,"line active.");
   gtk_label_set_text (GTK_LABEL(label3),buffer);
 
 }
 
-void	on_clear_clicked(GtkWidget *b1) { // clears (1) line, only use when activated = true 
+void	on_clear_clicked(GtkWidget *b1) { // clears (1) line, only use when lineatv = true 
   
-  p1 = start;
-  while (p1) { p2 = p1 -> next; free(p1); p1 = p2; } //clear the line drawn, beginning to end 
-  start = NULL;
- 
-  heads = lnstart;  //delete the most recent line head 
-  heads2 = heads -> next; free(heads); heads = heads2;
-  lnstart = NULL;
+  clearline();
     
   gtk_widget_queue_draw (draw1);
 
 }
+
+void clearline(){
+  if (heads != NULL){
+    p1 = start;
+    while (p1) { p2 = p1 -> next; free(p1); p1 = p2; } //clear the line drawn, beginning to end 
+    start = NULL;
+
+    heads2 = heads -> next; free(heads); heads = heads2;
+    lnstart = heads;
+    if (heads!=NULL) {start = heads->head;}
+  }
+}
+
+void snapchange(GtkWidget *widget, cairo_t *cr){
+  if (snapatv == TRUE){
+    int xgap, ygap;
+    int gap = 13;  
+
+    heads2 = heads; // store heads 
+    p2 = p1; //store point; idk if this is needed 
+
+    while (heads != NULL) {
+      p1 = heads -> head;//p1 pointed to first in line.
+      //if (p1->next == NULL) return; // if first point in line don't snap
+        while ( p1 != NULL ) {
+          xgap = abs(gend.coordx - p1->x);
+          ygap = abs(gend.coordy - p1->y);
+          if (xgap < gap && ygap < gap){
+            if (p1 == heads2->head) return; // Dont point to the most recent point clicked.  
+            gend.coordx = p1->x;gend.snapcoordx = p1->x;
+            gend.coordy = p1->y;gend.snapcoordy = p1->y;
+
+            cairo_rectangle (cr, p1->x - (10), p1->y - (10), 20, 20);//point out snap location to user
+            heads = heads2; //reset head to same value as beginning.
+            p1 = p2; //reset p1 to same value as the beginning. 
+            gend.snap = TRUE;
+            return; //note : this return makes it such that the square points to the most recent point made.  
+          }
+          p1 = p1 ->next; //p1 now points to the next value of the linked list 
+        }    
+      heads = heads->next; // move to the next point in the line.
+    }   // isn't this O(n^2)? thats rough buddy 
+
+    heads = heads2; //reset head to same value as beginning.
+    p1 = p2; //reset p1 to same value as the beginning. 
+    
+  }
+  gend.snap = FALSE;
+}
+
+void	on_snaptgl_toggled(GtkToggleButton *b) {
+	gboolean T = gtk_toggle_button_get_active(b);
+	if (T) snapatv = TRUE;
+	else   snapatv = FALSE;
+	}
